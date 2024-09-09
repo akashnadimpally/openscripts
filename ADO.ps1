@@ -1,7 +1,6 @@
 # Variables for your Azure DevOps organization and project
 $organization = "your-organization-name"
 $project = "your-project-name"
-$repository = "your-repo-name"
 $keyword = "<base />"
 
 # Personal Access Token (PAT) for authentication
@@ -12,37 +11,52 @@ $headers = @{
     Authorization = ("Basic {0}" -f [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes(":$($pat)")))
 }
 
-# API endpoint for searching code in the repository
-$searchUrl = "https://dev.azure.com/$organization/$project/_apis/search/codeQueries?api-version=6.0-preview.1"
+# Get the list of all repositories in the project
+$reposUrl = "https://dev.azure.com/$organization/$project/_apis/git/repositories?api-version=6.0"
+$reposResponse = Invoke-RestMethod -Uri $reposUrl -Method Get -Headers $headers
 
-# JSON body for search query
-$body = @{
-    searchText = $keyword
-    top = 1000 # Max results to fetch
-} | ConvertTo-Json
-
-# Send request to search the keyword in the repository
-$response = Invoke-RestMethod -Uri $searchUrl -Method Post -Headers $headers -Body $body -ContentType "application/json"
-
-# Check if the response contains any search results
-if ($response.results.Count -gt 0) {
+# Check if there are repositories
+if ($reposResponse.value.Count -gt 0) {
     $results = @()
 
-    # Iterate through the search results and extract file and repo name
-    foreach ($result in $response.results) {
-        $fileName = $result.fileName
-        $repoName = $result.repository.name
-        $results += [pscustomobject]@{
-            FileName = $fileName
-            RepoName = $repoName
+    # Loop through each repository
+    foreach ($repo in $reposResponse.value) {
+        $repoName = $repo.name
+        $repoId = $repo.id
+
+        # API endpoint for searching code in the repository
+        $searchUrl = "https://dev.azure.com/$organization/$project/_apis/search/codeQueries?api-version=6.0-preview.1"
+
+        # JSON body for search query
+        $body = @{
+            searchText = $keyword
+            repositoryFilters = @($repoId)
+            top = 1000 # Max results to fetch
+        } | ConvertTo-Json
+
+        # Send request to search the keyword in the current repository
+        $searchResponse = Invoke-RestMethod -Uri $searchUrl -Method Post -Headers $headers -Body $body -ContentType "application/json"
+
+        # Check if the search response contains results
+        if ($searchResponse.results.Count -gt 0) {
+            foreach ($result in $searchResponse.results) {
+                $fileName = $result.fileName
+                $results += [pscustomobject]@{
+                    FileName = $fileName
+                    RepoName = $repoName
+                }
+            }
         }
     }
 
     # Export results to CSV
-    $csvPath = "C:\Path\To\Save\Results.csv"
-    $results | Export-Csv -Path $csvPath -NoTypeInformation
-
-    Write-Host "Results exported successfully to CSV."
+    if ($results.Count -gt 0) {
+        $csvPath = "C:\Path\To\Save\Results.csv"
+        $results | Export-Csv -Path $csvPath -NoTypeInformation
+        Write-Host "Results exported successfully to CSV."
+    } else {
+        Write-Host "No matches found for the keyword across all repositories."
+    }
 } else {
-    Write-Host "No results found for the keyword."
+    Write-Host "No repositories found in the project."
 }
