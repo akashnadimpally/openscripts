@@ -28,3 +28,51 @@ for subscription in subscription_client.subscriptions.list():
         for resource in resources:
             if resource.type == apim_resource_type and resource.name == apim_resource_name:
                 print(f"Found APIM resource '{apim_resource_name}' in subscription '{subscription_id}' and resource group '{resource_group_name}'")
+
+
+
+
+
+
+from azure.identity import DefaultAzureCredential
+from azure.mgmt.resource import SubscriptionClient, ResourceManagementClient
+from azure.mgmt.apimanagement import ApiManagementClient
+
+# Set up authentication
+credential = DefaultAzureCredential()
+
+# Initialize Subscription Client
+subscription_client = SubscriptionClient(credential)
+
+# The specific API ID to search for
+api_id_to_search = "your-api-id"  # Replace with the actual APIID
+
+# Loop through all subscriptions
+for subscription in subscription_client.subscriptions.list():
+    subscription_id = subscription.subscription_id
+    print(f"Checking subscription: {subscription_id}")
+
+    # Initialize Resource Management Client for each subscription
+    resource_client = ResourceManagementClient(credential, subscription_id)
+    apim_client = ApiManagementClient(credential, subscription_id)
+
+    # Loop through all resource groups
+    for rg in resource_client.resource_groups.list():
+        resource_group_name = rg.name
+
+        # Filter only API Management services in the resource group
+        apim_services = resource_client.resources.list_by_resource_group(resource_group_name, filter="resourceType eq 'Microsoft.ApiManagement/service'")
+        
+        for apim_service in apim_services:
+            service_name = apim_service.name
+            print(f"Checking APIM service: {service_name}")
+
+            # Check if the API exists in the APIM service
+            try:
+                api = apim_client.api.get(resource_group_name, service_name, api_id_to_search)
+                print(f"API '{api_id_to_search}' found in APIM '{service_name}' under subscription '{subscription_id}' and resource group '{resource_group_name}'")
+            except Exception as e:
+                # Handle cases where the API does not exist in the service
+                print(f"API '{api_id_to_search}' not found in APIM '{service_name}'")
+
+
