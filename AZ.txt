@@ -1,0 +1,30 @@
+from azure.identity import DefaultAzureCredential
+from azure.mgmt.resource import SubscriptionClient, ResourceManagementClient
+
+# Set up authentication
+credential = DefaultAzureCredential()
+
+# Initialize Subscription Client
+subscription_client = SubscriptionClient(credential)
+
+# APIM resource type
+apim_resource_type = "Microsoft.ApiManagement/service"
+apim_resource_name = "your-apim-name"  # Replace with your APIM resource name
+
+# Loop through all subscriptions
+for subscription in subscription_client.subscriptions.list():
+    subscription_id = subscription.subscription_id
+    print(f"Checking subscription: {subscription_id}")
+
+    # Initialize Resource Management Client for each subscription
+    resource_client = ResourceManagementClient(credential, subscription_id)
+
+    # Loop through all resource groups
+    for rg in resource_client.resource_groups.list():
+        resource_group_name = rg.name
+
+        # Check for APIM resource in each resource group
+        resources = resource_client.resources.list_by_resource_group(resource_group_name)
+        for resource in resources:
+            if resource.type == apim_resource_type and resource.name == apim_resource_name:
+                print(f"Found APIM resource '{apim_resource_name}' in subscription '{subscription_id}' and resource group '{resource_group_name}'")
