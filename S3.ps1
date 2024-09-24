@@ -14,9 +14,9 @@ if ($content -match 'providerApis:\s*([\s\S]*?)(?=\n\w|\Z)') {
 
     # Check if the new API name is already in the list
     if ($existingApis -notcontains $newApiName) {
-        # Add the new API name to the list
-        $updatedApis = ($existingApis + $newApiName) -join "`n    - "
-        $content = $content -replace 'providerApis:\s*([\s\S]*?)(?=\n\w|\Z)', "providerApis:`n    - $updatedApis"
+        # Add the new API name to the list and format correctly
+        $updatedApis = ($existingApis + $newApiName) | ForEach-Object { "    - $_" } -join "`n"
+        $content = $content -replace 'providerApis:\s*([\s\S]*?)(?=\n\w|\Z)', "providerApis:`n$updatedApis"
 
         # Write the updated content back to the file
         Set-Content -Path $filePath -Value $content
@@ -27,6 +27,38 @@ if ($content -match 'providerApis:\s*([\s\S]*?)(?=\n\w|\Z)') {
 } else {
     Write-Host "No providerApis section found in the file."
 }
+
+
+
+# # Define the path to the catalog-info.yml file
+# $filePath = "C:\path\to\catalog-info.yml"
+
+# # Define the new API name to add
+# $newApiName = "omega"  # Change this to the new API name you want to add
+
+# # Read the content of the YAML file
+# $content = Get-Content -Path $filePath -Raw
+
+# # Check if the providerApis section exists
+# if ($content -match 'providerApis:\s*([\s\S]*?)(?=\n\w|\Z)') {
+#     # Extract existing APIs
+#     $existingApis = [regex]::Matches($matches[1], '^\s*-\s*(\S+)', [System.Text.RegularExpressions.RegexOptions]::Multiline) | ForEach-Object { $_.Groups[1].Value }
+
+#     # Check if the new API name is already in the list
+#     if ($existingApis -notcontains $newApiName) {
+#         # Add the new API name to the list
+#         $updatedApis = ($existingApis + $newApiName) -join "`n    - "
+#         $content = $content -replace 'providerApis:\s*([\s\S]*?)(?=\n\w|\Z)', "providerApis:`n    - $updatedApis"
+
+#         # Write the updated content back to the file
+#         Set-Content -Path $filePath -Value $content
+#         Write-Host "Updated providerApis list with new API: $newApiName"
+#     } else {
+#         Write-Host "The API name '$newApiName' is already present in the providerApis list."
+#     }
+# } else {
+#     Write-Host "No providerApis section found in the file."
+# }
 
 
 
