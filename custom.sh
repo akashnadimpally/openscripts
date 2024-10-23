@@ -3,38 +3,50 @@
 # Exit immediately if a command exits with a non-zero status
 set -e
 
-# Variables
-SPLUNK_PASSWORD="changemeAfter123"           # Splunk admin password
-SPLUNK_HEC_TOKEN_NAME="k8s_token"     # Desired HEC token name
-SPLUNK_HEC_TOKEN_DESC="HEC Token via Terraform Script"  # Description for HEC token
-SPLUNK_INDEXES=("k8s_events" "k8s_metrics")             # List of indexes to create
+# Redirect all output to a log file
+exec > setup.log 2>&1
+
+# Variables (preferably passed as environment variables or Terraform variables)
+SPLUNK_PASSWORD="${SPLUNK_PASSWORD_ENV:-changemeAfter123}"  # Splunk admin password
+SPLUNK_HEC_TOKEN_NAME="k8s_token"                           # Desired HEC token name
+SPLUNK_HEC_TOKEN_DESC="HEC Token via Terraform Script"      # Description for HEC token
+SPLUNK_INDEXES=("k8s_events" "k8s_metrics")                 # List of indexes to create
 
 # Update package lists
 echo "Updating package lists..."
 sudo apt-get update -y
 
-# Install Docker
-echo "Installing Docker..."
-sudo apt-get install docker.io -y
+# Install Docker if not installed
+if ! command -v docker &> /dev/null; then
+    echo "Installing Docker..."
+    sudo apt-get install docker.io -y
+else
+    echo "Docker is already installed."
+fi
 
-# Add the current user to the Docker group
-echo "Adding user to Docker group..."
-sudo usermod -aG docker $USER
+# Add the current user to the Docker group if not already a member
+if groups $USER | grep &>/dev/null '\bdocker\b'; then
+    echo "User $USER is already in the docker group."
+else
+    echo "Adding user to Docker group..."
+    sudo usermod -aG docker $USER
+    echo "Please log out and log back in for group changes to take effect."
+fi
 
-# Apply new group membership (effective for future sessions)
-# Note: 'newgrp' creates a new shell; in scripts, it may not have the intended effect
-# Therefore, Docker commands will be prefixed with 'sudo'
-# Alternatively, you can log out and back in to apply group changes
+# Note: 'newgrp docker' has no effect in non-interactive shells
+# Users need to log out and back in for group changes to take effect
+# Alternatively, use 'sudo' for Docker commands
 
-# Adjust Docker socket permissions (if necessary)
-echo "Adjusting Docker socket permissions..."
-sudo chmod 666 /var/run/docker.sock
+echo "Docker installation and configuration complete."
 
-echo "Docker installation complete."
-
-# Install Docker Compose
-echo "Installing Docker Compose..."
-sudo apt-get install docker-compose -y
+# Install Docker Compose if not installed
+if ! command -v docker-compose &> /dev/null; then
+    echo "Installing Docker Compose..."
+    sudo apt-get install docker-compose -y
+    # Alternatively, install the latest version via pip or download from GitHub
+else
+    echo "Docker Compose is already installed."
+fi
 
 # Verify Docker Compose installation
 docker-compose --version
@@ -47,17 +59,21 @@ echo "Setting up Splunk..."
 echo "Pulling Splunk Docker image..."
 sudo docker pull splunk/splunk:latest
 
-# Run Splunk container
-echo "Running Splunk Docker container..."
-sudo docker run -d \
-  -p 8000:8000 \
-  -p 9997:9997 \
-  -p 8088:8088 \
-  -p 8089:8089 \
-  -e "SPLUNK_START_ARGS=--accept-license" \
-  -e "SPLUNK_PASSWORD=${SPLUNK_PASSWORD}" \
-  --name splunk \
-  splunk/splunk:latest
+# Run Splunk container if not already running
+if [ "$(sudo docker ps -q -f name=splunk)" ]; then
+    echo "Splunk container is already running."
+else
+    echo "Running Splunk Docker container..."
+    sudo docker run -d \
+      -p 8000:8000 \
+      -p 9997:9997 \
+      -p 8088:8088 \
+      -p 8089:8089 \
+      -e "SPLUNK_START_ARGS=--accept-license" \
+      -e "SPLUNK_PASSWORD=${SPLUNK_PASSWORD}" \
+      --name splunk \
+      splunk/splunk:latest
+fi
 
 # Function to check if Splunk is up by querying the REST API
 check_splunk() {
@@ -80,10 +96,10 @@ until check_splunk; do
 done
 echo "Splunk is up and running."
 
-# Function to execute Splunk CLI commands inside the Docker container
+# Function to execute Splunk CLI commands inside the Docker container as 'splunk' user
 splunk_exec() {
     local cmd="$1"
-    sudo docker exec splunk /opt/splunk/bin/splunk ${cmd} -auth admin:"${SPLUNK_PASSWORD}"
+    sudo docker exec -u splunk splunk /opt/splunk/bin/splunk ${cmd} -auth admin:"${SPLUNK_PASSWORD}"
 }
 
 # Create Splunk indexes
