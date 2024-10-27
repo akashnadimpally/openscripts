@@ -39,6 +39,14 @@ fi
 
 echo "Docker installation and configuration complete."
 
+echo "Installing AZ CLI................................"
+
+curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+az upgrade
+sudo apt-get update && sudo apt-get upgrade
+
+echo "AZ CLI Installed."
+
 
 echo "Installing kubectl ................."
 
