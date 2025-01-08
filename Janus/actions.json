@@ -1,220 +1,98 @@
 {
-  "openapi": "3.0.0",
-  "info": {
-    "title": "Azure and Azure DevOps Actions API",
-    "version": "1.0.0",
-    "description": "Defines actions for interacting with Azure and Azure DevOps."
-  },
-  "paths": {
-    "/fetch:azure-template": {
-      "post": {
-        "summary": "Fetch an Azure Resource Template",
-        "operationId": "fetchAzureTemplate",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "templateUrl": {
-                    "type": "string",
-                    "description": "URL to the Azure Resource Template"
-                  },
-                  "parameters": {
-                    "type": "object",
-                    "description": "Template parameters for deployment"
-                  }
-                },
-                "required": ["templateUrl"]
-              }
-            }
-          }
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Azure DevOps Actions",
+  "description": "Defines actions for integrating workflows with Azure DevOps",
+  "type": "object",
+  "properties": {
+    "fetch:template": {
+      "type": "object",
+      "description": "Fetches a predefined template from an Azure repository",
+      "required": ["url", "values"],
+      "properties": {
+        "url": {
+          "type": "string",
+          "description": "URL to the Azure repository template"
         },
-        "responses": {
-          "200": {
-            "description": "Template fetched successfully",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "template": {
-                      "type": "object",
-                      "description": "Fetched template details"
-                    }
-                  }
-                }
-              }
-            }
+        "values": {
+          "type": "object",
+          "description": "Key-value pairs to substitute within the template"
+        }
+      }
+    },
+    "publish:azure:repo": {
+      "type": "object",
+      "description": "Publishes code to an Azure DevOps repository",
+      "required": ["project", "repoName", "branchName", "description"],
+      "properties": {
+        "project": {
+          "type": "string",
+          "description": "Name of the Azure DevOps project"
+        },
+        "repoName": {
+          "type": "string",
+          "description": "Name of the repository"
+        },
+        "branchName": {
+          "type": "string",
+          "description": "Branch name for the initial commit"
+        },
+        "description": {
+          "type": "string",
+          "description": "Description of the repository"
+        },
+        "commitMessage": {
+          "type": "string",
+          "description": "Initial commit message",
+          "default": "Initial commit"
+        }
+      }
+    },
+    "catalog:register": {
+      "type": "object",
+      "description": "Registers a repository in the Azure DevOps catalog",
+      "required": ["project", "repoUrl", "catalogInfoPath"],
+      "properties": {
+        "project": {
+          "type": "string",
+          "description": "Name of the Azure DevOps project"
+        },
+        "repoUrl": {
+          "type": "string",
+          "description": "URL of the repository to register"
+        },
+        "catalogInfoPath": {
+          "type": "string",
+          "description": "Path to the catalog info file"
+        },
+        "optional": {
+          "type": "boolean",
+          "description": "Flag to mark the registration as optional",
+          "default": false
+        }
+      }
+    },
+    "fs:delete": {
+      "type": "object",
+      "description": "Deletes specified files or directories",
+      "required": ["files"],
+      "properties": {
+        "files": {
+          "type": "array",
+          "description": "List of file paths to delete",
+          "items": {
+            "type": "string"
           }
         }
       }
     },
-    "/publish:azure-repo": {
-      "post": {
-        "summary": "Publish code to Azure DevOps repository",
-        "operationId": "publishAzureRepo",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "organization": {
-                    "type": "string",
-                    "description": "Azure DevOps organization name"
-                  },
-                  "project": {
-                    "type": "string",
-                    "description": "Azure DevOps project name"
-                  },
-                  "repoName": {
-                    "type": "string",
-                    "description": "Target repository name"
-                  },
-                  "branch": {
-                    "type": "string",
-                    "description": "Branch name to publish to",
-                    "default": "main"
-                  },
-                  "commitMessage": {
-                    "type": "string",
-                    "description": "Commit message"
-                  }
-                },
-                "required": ["organization", "project", "repoName"]
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Repository published successfully",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "status": {
-                      "type": "string",
-                      "description": "Status of the operation",
-                      "enum": ["success", "failure"]
-                    },
-                    "details": {
-                      "type": "string",
-                      "description": "Additional details on the operation"
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/catalog:register": {
-      "post": {
-        "summary": "Register an Azure DevOps resource in the catalog",
-        "operationId": "registerAzureCatalog",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "catalogUrl": {
-                    "type": "string",
-                    "description": "URL of the catalog to register with"
-                  },
-                  "resourceDetails": {
-                    "type": "object",
-                    "description": "Details of the resource to register"
-                  }
-                },
-                "required": ["catalogUrl", "resourceDetails"]
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Resource registered successfully",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "status": {
-                      "type": "string",
-                      "description": "Status of the operation",
-                      "enum": ["success", "failure"]
-                    },
-                    "details": {
-                      "type": "string",
-                      "description": "Additional details on the operation"
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/ci:trigger-pipeline": {
-      "post": {
-        "summary": "Trigger an Azure DevOps pipeline",
-        "operationId": "triggerAzurePipeline",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "organization": {
-                    "type": "string",
-                    "description": "Azure DevOps organization name"
-                  },
-                  "project": {
-                    "type": "string",
-                    "description": "Azure DevOps project name"
-                  },
-                  "pipelineId": {
-                    "type": "integer",
-                    "description": "ID of the pipeline to trigger"
-                  },
-                  "parameters": {
-                    "type": "object",
-                    "description": "Parameters to pass to the pipeline"
-                  }
-                },
-                "required": ["organization", "project", "pipelineId"]
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Pipeline triggered successfully",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "status": {
-                      "type": "string",
-                      "description": "Status of the operation",
-                      "enum": ["success", "failure"]
-                    },
-                    "details": {
-                      "type": "string",
-                      "description": "Additional details on the operation"
-                    }
-                  }
-                }
-              }
-            }
-          }
+    "sysout": {
+      "type": "object",
+      "description": "Custom action to output messages",
+      "required": ["message"],
+      "properties": {
+        "message": {
+          "type": "string",
+          "description": "Message to output"
         }
       }
     }
